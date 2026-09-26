@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Visualization from "./Visualization";
+import AnswerFeedback from "./AnswerFeedback";
+import { nextFeedback } from "../data/answerFeedback";
 import { byId, stepTitles } from "../data/phenomena";
 import {
   HINT_CAPS,
@@ -17,7 +19,8 @@ export default function Turn({ entry, player, rounds, onComplete }) {
     [answer, setAnswer] = useState(null),
     [replayStep, setReplayStep] = useState(0),
     [playing, setPlaying] = useState(true),
-    [score, setScore] = useState(null);
+    [score, setScore] = useState(null),
+    [feedbackMessage, setFeedbackMessage] = useState("");
   const started = useRef(performance.now()),
     readyAt = useRef(null),
     locked = useRef(false);
@@ -61,7 +64,8 @@ export default function Turn({ entry, player, rounds, onComplete }) {
       ),
     );
     setReplayStep(0);
-    setMode("reconstruction");
+    setFeedbackMessage(nextFeedback(id === p.id));
+    setMode("feedback");
   }
   const step =
     mode === "reconstruction" ? replayStep : timelineStep(s, elapsed);
@@ -86,14 +90,8 @@ export default function Turn({ entry, player, rounds, onComplete }) {
           </h2>
         </div>
         <div className="max-score">
-          <small>
-            {mode === "reconstruction"
-              ? "PUNTOS DEL TURNO"
-              : "BASE MÁXIMA ACTUAL"}
-          </small>
-          <strong>
-            {mode === "reconstruction" ? score.total : HINT_CAPS[hints]}
-          </strong>
+          <small>{score ? "PUNTOS DEL TURNO" : "BASE MÁXIMA ACTUAL"}</small>
+          <strong>{score ? score.total : HINT_CAPS[hints]}</strong>
         </div>
       </div>
       <div className="turn-stage">
@@ -163,10 +161,12 @@ export default function Turn({ entry, player, rounds, onComplete }) {
           )}
           {mode === "reconstruction" && (
             <>
-              <span className={`eyebrow ${answer === p.id ? "success" : ""}`}>
+              <span
+                className={`answer-result-label ${answer === p.id ? "is-correct" : "is-incorrect"}`}
+              >
                 {answer === p.id
-                  ? "SEÑAL IDENTIFICADA"
-                  : "UNA NUEVA SEÑAL POR APRENDER"}
+                  ? "✓ RESPUESTA CORRECTA"
+                  : "✕ RESPUESTA INCORRECTA"}
               </span>
               <h2>{p.name}</h2>
               {answer !== p.id && (
@@ -238,6 +238,16 @@ export default function Turn({ entry, player, rounds, onComplete }) {
           )}
         </aside>
       </div>
+      {mode === "feedback" && (
+        <AnswerFeedback
+          correct={answer === p.id}
+          message={feedbackMessage}
+          phenomenon={p.name}
+          answer={byId[answer].name}
+          score={score.total}
+          onContinue={() => setMode("reconstruction")}
+        />
+      )}
     </main>
   );
 }
